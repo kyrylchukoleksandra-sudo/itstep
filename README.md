@@ -8,8 +8,8 @@
 - [ItProger: Python (Класи та об'єкти)](https://itproger.com/ua/course/python/19) 
 - [Acode Python Lessons](https://acode.com.ua/lessons-python/) 
 - [W3Schools Python Classes](https://w3schoolsua.github.io/python/python_classes.html) 
-
----
+- [BaseException та вбудовані винятки](https://docs.python.org/3/library/exceptions.html?utm_source=chatgpt.com)
+- [Обробка помилок та винятків](https://docs.python.org/uk/3/tutorial/errors.html?utm_source=chatgpt.com)
 
 ## 🎬 Відеоматеріали
 
@@ -17,6 +17,7 @@
 - [Конструктор класу `__init__` та параметр `self` (YouTube)](https://www.youtube.com/watch?v=nCU9Jc_aIf8) — розбір ініціалізації об'єктів та роботи зі змінними екземпляра.
 - [Приватні атрибути та інкапсуляція (YouTube)](https://www.youtube.com/watch?v=OPgzUZ86HYA) — як обмежити доступ до атрибутів класу ззовні.
 - [Наслідування в Python (YouTube)](https://www.youtube.com/watch?v=nB2QMVzgtpw) — як розширити функціонал класу за допомогою створення похідних класів.
+- [Відеоурок з обробки помилок та винятків у Python](https://www.youtube.com/watch?v=tRpU_11HCYo\&utm_source=chatgpt.com)
 
 ---
 
