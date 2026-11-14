@@ -1,213 +1,250 @@
 
-# Заняття 8. Логування. Конфігурування логування. Тести
+# Заняття 7. Ітератори. Генератори. Замикання. Декоратори
 
-У цьому конспекті зібрано теоретичний матеріал щодо збору інформації про роботу програми за допомогою логування та автоматизованої перевірки коду за допомогою тестів.
+У цьому конспекті зібрано теоретичний матеріал про те, як влаштовані ітерації «під капотом» у Python, як економити оперативну пам'ять за допомогою «лінивих» обчислень та як розширювати поведінку функцій за допомогою замикань і декораторів.
 
 ---
 
-## 1. Модуль `logging`. Робота з логуванням
+## 1. Ітератори та ітеровані об'єкти
 
-**Логування** — це процес запису подій, що відбуваються під час виконання програми. Воно дозволяє гнучко збирати інформацію про роботу окремих частин коду, відстежувати дії користувачів та фіксувати помилки для подальшого налагодження.
+### У чому різниця?
+* **Ітерований об'єкт (Iterable)** — це будь-який об'єкт, по якому можна пройтися в циклі `for` (наприклад, `list`, `str`, `tuple`, `dict`, `set`). Він знає, як створити ітератор, але сам не зберігає поточну позицію обходу.
+* **Ітератор (Iterator)** — це спеціальний об'єкт-потік, який видає елементи по одному за запитом і пам'ятає, на якому місці зупинився. Коли елементи закінчуються, ітератор генерує виняток `StopIteration`.
 
-Для роботи використовується вбудований модуль:
+Головна перевага ітераторів — **«ліниві» обчислення (lazy evaluation)**: елементи не зберігаються в пам'яті всі одразу, а обчислюються лише в момент звернення до них.
+
+### Функції `iter()` та `next()`
+
+Під час запуску циклу `for` Python автоматично перетворює ітерований об'єкт на ітератор за допомогою `iter()` і на кожному кроці викликає `next()`. Це можна зробити і вручну:
+
 ```python
-import logging
+my_list = [1, 2, 3]
+iterator = iter(my_list)  # Створюємо об'єкт-ітератор
+
+print(next(iterator))  # 1
+print(next(iterator))  # 2
+print(next(iterator))  # 3
+# print(next(iterator)) -> Викличе виняток StopIteration
 
 ```
 
-### Рівні важливості повідомлень
+> **Особливість ітератора:** Він одноразовий. Коли ви пройшли по ньому до кінця (через `next()` або цикл `for`), він стає «порожнім». Щоб пройтися знову, потрібно створити новий ітератор через `iter()`.
 
-У модулі `logging` існує 5 стандартних рівнів важливості (від найнижчого до найвищого):
+### Створення власного ітератора (протокол ітерації)
 
-| Рівень | Призначення |
-| --- | --- |
-| **`DEBUG`** | Найнижчий рівень. Використовується розробниками для детальної діагностики та налагодження. |
-| **`INFO`** | Повідомлення про коректну, штатну роботу складників програми. |
-| **`WARNING`** | Застереження про потенційні проблеми або нештатні ситуації, які ще не зупиняють роботу програми. |
-| **`ERROR`** | Помилки, що свідчать про некоректну роботу певної функції чи частини коду. |
-| **`CRITICAL`** | Критичні збої, через які подальше виконання програми неможливе. |
+Щоб зробити власний клас ітерованим, потрібно реалізувати два магічні методи (протокол ітератора):
 
-> **Важливо:** Після встановлення певного рівня логування фіксуються повідомлення **цього рівня та всіх вищих**. Повідомлення нижчих рівнів ігноруються. За замовчуванням встановлено рівень `WARNING`.
-
-### Генерація повідомлень
-
-Для створення записів використовуються однойменні функції:
+* `__iter__(self)` — повертає сам об'єкт ітератора (`return self`) і за потреби скидає лічильник у початковий стан.
+* `__next__(self)` — повертає наступний елемент послідовності або генерує `raise StopIteration`, коли елементи вичерпано.
 
 ```python
-import logging
+class Counter:
+    def __init__(self, max_number):
+        self.i = 0
+        self.max_number = max_number
 
-logging.debug('Повідомлення рівня DEBUG')       # Не виведеться за замовчуванням
-logging.info('Повідомлення рівня INFO')         # Не виведеться за замовчуванням
-logging.warning('Повідомлення рівня WARNING')   # Виведеться
-logging.error('Повідомлення рівня ERROR')       # Виведеться
-logging.critical('Повідомлення рівня CRITICAL') # Виведеться
+    def __iter__(self):
+        self.i = 0
+        return self
 
-```
+    def __next__(self):
+        self.i += 1
+        if self.i > self.max_number:
+            raise StopIteration
+        return self.i
 
-### Конфігурування за допомогою `basicConfig()`
-
-Щоб змінити рівень логування, налаштувати запис у файл та задати формат повідомлень, використовується метод `logging.basicConfig()`.
-
-**Основні параметри:**
-
-* `level` — мінімальний рівень важливості повідомлень (наприклад, `logging.DEBUG`).
-* `filename` — шлях до файлу для запису логів (зазвичай використовують розширення `.log`).
-* `filemode` — режим відкриття файлу: `'a'` (дозапис у кінець файлу, використовується за замовчуванням) або `'w'` (перезапис файлу при кожному запуску).
-* `format` — шаблон форматування рядка логу.
-
-**Популярні специфікатори формату:**
-
-* `%(asctime)s` — дата та час створення запису;
-* `%(levelname)s` — рівень важливості повідомлення;
-* `%(message)s` — текст повідомлення.
-
-**Приклад налаштування запису у файл:**
-
-```python
-import logging
-
-logging.basicConfig(
-    level=logging.DEBUG,
-    filename="logs.log",
-    filemode="w",
-    format="%(asctime)s : %(levelname)s - %(message)s"
-)
-
-logging.debug('Діагностична інформація')
-logging.info('Програма успішно запущена')
-
-```
-
-### Поєднання логування з обробкою винятків (`try...except`)
-
-Логування зручно використовувати в блоках `except` для фіксації помилок разом із повним трасуванням стека (`traceback`) за допомогою `logging.exception()` або опису помилки через `logging.error()`:
-
-```python
-import logging
-
-logging.basicConfig(
-    level=logging.ERROR,
-    filename="errors.log",
-    filemode="a",
-    format="%(asctime)s - %(levelname)s - %(message)s"
-)
-
-def divide(a, b):
-    try:
-        return a / b
-    except ZeroDivisionError as e:
-        logging.error(f"Помилка ділення: {e}")
-        # Або logging.exception("Виник виняток") для запису повного traceback
-
-divide(10, 0)
+count = Counter(5)
+for elem in count:
+    print(elem)  # Виведе числа від 1 до 5
 
 ```
 
 ---
 
-## 2. Тестування коду в Python
+## 2. Генератори
 
-**Тестування** — це автоматизована перевірка працездатності програми та її окремих компонентів. У міру зростання проєкту ручна перевірка стає неефективною, тому розробники пишуть тести, які дозволяють швидко переконатися, що зміни в коді не зламали існуючий функціонал.
+**Генератор** — це спрощений спосіб створення ітератора у вигляді функції. Замість написання класу з методами `__iter__()` та `__next__()`, ми пишемо звичайну функцію, але замість `return` використовуємо ключове слово `yield`.
 
-### Оператор `assert` та виняток `AssertionError`
+### Як працює `yield`?
 
-Найпростіший спосіб перевірити певну умову в коді — оператор `assert`. Якщо умова повертає `True`, програма продовжує роботу. Якщо `False` — генерується виняток `AssertionError`.
+Коли Python зустрічає `yield`, функція **не завершується** (як при `return`), а ставить своє виконання «на паузу», заморожує всі локальні змінні та віддає значення назовні. При наступному виклику `next()` виконання продовжується з того самого місця.
 
 ```python
-assert 2 + 2 == 4  # Умова істинна — помилки немає
+def raise_to_the_degrees(number, max_degree):
+    i = 0
+    for _ in range(max_degree):
+        yield number ** i
+        i += 1
 
-# Якщо умова хибна, виникне AssertionError із вказаним повідомленням:
-assert 2 + 2 == 5, "Неправильний результат обчислення"
+res = raise_to_the_degrees(2, 5)
+print(res)  # <generator object raise_to_the_degrees at ...>
+
+for val in res:
+    print(val)  # 1, 2, 4, 8, 16
 
 ```
 
-### Доктести (модуль `doctest`)
+### Нескінченні послідовності та зупинка генератора
 
-**Доктести** дозволяють писати тести безпосередньо всередині рядків документації (docstrings), імітуючи роботу інтерактивної консолі Python (`>>>`).
+Оскільки генератор обчислює лише одне значення за раз, він може працювати нескінченно, не переповнюючи оперативну пам'ять. Щоб достроково завершити роботу генератора за певної умови, використовують `return` (який «під капотом» викликає `StopIteration`):
 
 ```python
+def raise_to_the_degrees(number):
+    i = 0
+    while True:
+        result = number ** i
+        yield result
+        if result > 100 ** 5:
+            return  # Зупиняє генератор (генерує StopIteration)
+        i += 1
+
+```
+
+### Генераторні вирази (Generator Expressions)
+
+Крім функцій з `yield`, генератор можна створити в один рядок — синтаксис схожий на генератор списків (list comprehension), але замість квадратних дужок `[]` використовуються круглі `()`:
+
+```python
+squares_list = [x ** 2 for x in range(1000000)]  # Одразу займає пам'ять під 1 млн чисел
+squares_gen = (x ** 2 for x in range(1000000))   # Майже не займає пам'ять, рахує по одному
+
+```
+
+---
+
+## 3. Виклик об'єктів та замикання функцій (Closures)
+
+### Виклик екземплярів класу: метод `__call__`
+
+У Python викликати через круглі дужки `()` можна не лише функції, а й об'єкти класів, якщо в класі визначено метод `__call__()`. Це дозволяє об'єкту зберігати внутрішній стан між викликами:
+
+```python
+class Helper:
+    def __init__(self, work):
+        self.work = work
+
+    def __call__(self, new_work):
+        return f"I will help you with your {self.work}. Afterwards I will help you with {new_work}"
+
+helper = Helper("homework")
+print(helper("cleaning"))  # Викликаємо об'єкт як функцію
+
+```
+
+### Замикання (Closures)
+
+У функціональному програмуванні ту саму поведінку (збереження стану без використання класів) реалізують за допомогою **замикань**.
+
+**Замикання** виникає тоді, коли вкладена функція посилається на змінні із зовнішньої функції, а зовнішня функція повертає цю вкладену функцію як результат. Навіть після завершення роботи зовнішньої функції вкладена функція «пам'ятає» оточення, в якому була створена.
+
+```python
+def helper(work):
+    work_in_memory = work  # Змінна зовнішньої області видимості
+
+    def inner_helper(new_work):
+        # Вкладена функція «замикає» в собі work_in_memory
+        return f"I will help you with your {work_in_memory}. Afterwards I will help you with {new_work}"
+
+    return inner_helper  # Повертаємо саму функцію (без дужок!)
+
+my_helper = helper("homework")
+print(my_helper("cleaning"))
+print(my_helper("driving"))
+
+```
+
+---
+
+## 4. Декоратори
+
+**Декоратор** — це патерн проєктування (побудований на замиканнях), який дозволяє «обгорнути» іншу функцію, щоб додати їй нову поведінку (логіку до або після виклику, логування, перевірку прав, обробку помилок) **без зміни коду самої функції**.
+
+### Як декоратор працює без синтаксичного цукру
+
+Декоратор приймає функцію як аргумент і повертає нову функцію-обгортку (`wrapper`):
+
+```python
+def checker(function):
+    def wrapper(*args, **kwargs):
+        try:
+            result = function(*args, **kwargs)
+        except Exception as exc:
+            print(f"We have problems: {exc}")
+        else:
+            print(f"No problems. Result - {result}")
+            return result
+    return wrapper
+
+def calculate(expression):
+    return eval(expression)
+
+calculate = checker(calculate)  # Ручне декорування
+calculate("2 + 2")
+
+```
+
+### Синтаксичний цукор `@`
+
+Щоб не переприсвоювати функцію вручну, у Python використовують символ `@` перед оголошенням функції:
+
+```python
+@checker
+def calculate(expression):
+    return eval(expression)
+
+calculate("2 + 2")
+calculate("2 / 0")  # Помилка буде перехоплена декоратором
+
+```
+
+### Декоратори з параметрами (декоратори вищого порядку)
+
+Якщо декоратору потрібно передати власні налаштування (наприклад, кортеж винятків, які слід перехоплювати), створюється ще один зовнішній рівень вкладеності:
+
+```python
+def checker(*exc_types):
+    def decorator(function):
+        def wrapper(*args, **kwargs):
+            try:
+                result = function(*args, **kwargs)
+            except exc_types as exc:
+                print(f"We have problems: {exc}")
+            else:
+                print(f"No problems. Result - {result}")
+                return result
+        return wrapper
+    return decorator
+
+@checker(NameError, TypeError, SyntaxError, ZeroDivisionError)
+def calculate(expression):
+    return eval(expression)
+
+calculate("2 + 2")
+calculate("unknown_var + 5")
+
+```
+
+### Збереження метаданих функції (`functools.wraps`)
+
+Коли функція обгортається декоратором, її ім'я (`__name__`) та документація (`__doc__`) замінюються на дані функції `wrapper`. Щоб зберегти оригінальні метадані функції, у професійній розробці на `wrapper` навішують декоратор `@wraps(func)` зі стандартного модуля `functools`:
+
+```python
+from functools import wraps
+
+def logging_decorator(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        result = func(*args, **kwargs)
+        print(f"Function '{func.__name__}' called with args={args}, kwargs={kwargs} -> {result}")
+        return result
+    return wrapper
+
+@logging_decorator
 def add(a, b):
-    """
-    Повертає суму двох чисел.
-
-    >>> add(2, 2)
-    4
-    >>> add(10, -5)
-    5
-    """
+    """Додає два числа."""
     return a + b
 
-if __name__ == "__main__":
-    import doctest
-    doctest.testmod()
-
-```
-
-* Якщо фактичний результат збігається з очікуваним, `doctest.testmod()` завершується без повідомлень.
-* Якщо є розбіжність — у консоль виводиться детальний звіт про провалений тест.
-
-### Unit-тести (модуль `unittest`)
-
-**Unit-тестування (модульне тестування)** призначене для ізольованої перевірки окремих функцій, методів або класів. Гарною практикою є винесення тестів в окремий файл (наприклад, `tests.py`).
-
-**Основні правила побудови тестів у `unittest`:**
-
-1. Імпортувати модуль `unittest` та код, який потрібно протестувати.
-2. Створити клас, успадкований від `unittest.TestCase`.
-3. Назви всіх тестових методів усередині класу повинні починатися з префікса `test_`.
-4. Використовувати спеціальні методи перевірки (наприклад, `self.assertEqual(a, b)` для перевірки рівності).
-
-**Приклад коду програми (`main.py`):**
-
-```python
-def adder(*args, **kwargs):
-    result = 0
-    for item in args:
-        if isinstance(item, (int, float, bool)):
-            result += item
-        else:
-            try:
-                result += float(item)
-            except (ValueError, TypeError):
-                pass
-    for item in kwargs.values():
-        if isinstance(item, (int, float, bool)):
-            result += item
-        else:
-            try:
-                result += float(item)
-            except (ValueError, TypeError):
-                pass
-    return result
-
-```
-
-**Приклад файлу з тестами (`tests.py`):**
-
-```python
-import unittest
-from main import adder
-
-class MyTest(unittest.TestCase):
-    def test_args(self):
-        self.assertEqual(adder(2, 2), 4)
-
-    def test_kwargs(self):
-        self.assertEqual(adder(a=10, b=11), 21)
-
-    def test_mixed(self):
-        self.assertEqual(adder(1, a=2), 3)
-
-    def test_diff(self):
-        x = 10
-        y = 0
-        self.assertEqual(adder(0, -5, y, a=x), 5)
-
-    def test_wrong_datatype(self):
-        self.assertEqual(adder("5", "abc", 10), 15)
-
-if __name__ == "__main__":
-    unittest.main()
+print(add.__name__)  # Завдяки @wraps виведе 'add', а не 'wrapper'
 
 ```
 
@@ -215,6 +252,6 @@ if __name__ == "__main__":
 
 ## Корисні посилання
 
-* [Офіційна документація Python: модуль `logging`](https://docs.python.org/3/library/logging.html)
-* [Офіційна документація Python: модуль `doctest`](https://docs.python.org/3/library/doctest.html)
-* [Офіційна документація Python: модуль `unittest`](https://docs.python.org/3/library/unittest.html)
+* [Офіційна документація Python: Functional Programming HOWTO (ітератори та генератори)](https://docs.python.org/3/howto/functional.html)
+* [Офіційна документація Python: модуль `functools` та декоратор `wraps`](https://docs.python.org/3/library/functools.html#functools.wraps)
+* [Офіційна документація Python: магічні методи `__iter__`, `__next__`, `__call__`](https://docs.python.org/3/reference/datamodel.html#special-method-names)
