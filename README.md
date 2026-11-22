@@ -266,9 +266,9 @@ results.sort(key=lambda item: item[1], reverse=True)
 
 ## Корисні посилання
 
-* [Документація Python: графічний інтерфейс `tkinter](https://docs.python.org/3/library/tkinter.html)`
-* [Документація Python: діалогові вікна `tkinter.messagebox](https://docs.python.org/3/library/tkinter.messagebox.html)`
-* [Документація Python: вбудований модуль `sqlite3](https://docs.python.org/3/library/sqlite3.html)`
-* [Офіційна документація `requests](https://requests.readthedocs.io/en/latest/)`
-* [Офіційна документація `BeautifulSoup 4](https://www.crummy.com/software/BeautifulSoup/bs4/doc/)`
+* [Документація Python: графічний інтерфейс tkinter](https://docs.python.org/3/library/tkinter.html)
+* [Документація Python: діалогові вікна tkinter.messagebox](https://docs.python.org/3/library/tkinter.messagebox.html)
+* [Документація Python: вбудований модуль sqlite3](https://docs.python.org/3/library/sqlite3.html)
+* [Офіційна документація requests](https://requests.readthedocs.io/en/latest/)
+* [Офіційна документація BeautifulSoup 4](https://www.crummy.com/software/BeautifulSoup/bs4/doc/)
 
